@@ -134,13 +134,20 @@ class RouterScroll extends Service {
       this.unsetFirstLoad();
     }
 
-    let scrollPosition = this.position;
+    let scrollPosition = this.position || { x: 0, y: 0 };
 
     // If `preserveScrollPosition` was not set on the controller, attempt fallback to `preserveScrollPosition` which was set on the router service.
-    let preserveScrollPosition =
-      (transition.router.currentRouteInfos || []).some(
-        (routeInfo) => routeInfo.route.controller.preserveScrollPosition,
-      ) || this.preserveScrollPosition;
+    // Routes are ordered parent to child, so the most deeply nested controller that explicitly sets a boolean wins.
+    // This allows a child controller to override a parent's `preserveScrollPosition`.
+    let preserveScrollPosition = false;
+    (transition.router.currentRouteInfos || []).forEach((routeInfo) => {
+      let thisPreserveScrollPosition =
+        routeInfo.route.controller.preserveScrollPosition;
+      if (typeof thisPreserveScrollPosition === 'boolean') {
+        preserveScrollPosition = thisPreserveScrollPosition;
+      }
+    });
+    preserveScrollPosition ||= this.preserveScrollPosition;
 
     if (!preserveScrollPosition) {
       const { scrollElement, targetElement, currentURL } = this;
